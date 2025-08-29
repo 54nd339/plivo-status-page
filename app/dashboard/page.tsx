@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import ServiceManagement from '@/components/ServiceManagement';
 import IncidentManagement from '@/components/IncidentManagement';
-import TeamManagement from '@/components/TeamManagement'; // Import the new component
+import TeamManagement from '@/components/TeamManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function DashboardPage() {
