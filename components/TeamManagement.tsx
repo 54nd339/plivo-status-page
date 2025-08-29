@@ -12,7 +12,7 @@ import { Copy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function TeamManagement() {
-  const { organizationId, userProfile } = useAuth();
+  const { organizationId } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,14 +39,14 @@ export default function TeamManagement() {
           const userRef = doc(db, 'users', memberId);
           onSnapshot(userRef, (userDoc) => {
             if (userDoc.exists()) {
-                const profile = userDoc.data() as UserProfile;
-                const existingMemberIndex = memberProfiles.findIndex(m => m.uid === profile.uid);
-                if (existingMemberIndex > -1) {
-                    memberProfiles[existingMemberIndex] = profile;
-                } else {
-                    memberProfiles.push(profile);
-                }
-                setMembers([...memberProfiles]);
+              const profile = userDoc.data() as UserProfile;
+              const existingMemberIndex = memberProfiles.findIndex(m => m.uid === profile.uid);
+              if (existingMemberIndex > -1) {
+                memberProfiles[existingMemberIndex] = profile;
+              } else {
+                memberProfiles.push(profile);
+              }
+              setMembers([...memberProfiles]);
             }
           });
         }
@@ -85,8 +85,8 @@ export default function TeamManagement() {
     // Check if user is already a member
     const isAlreadyMember = members.some(member => member.email === inviteEmail);
     if (isAlreadyMember) {
-        setError("User is already a member of this organization.");
-        return;
+      setError("User is already a member of this organization.");
+      return;
     }
 
     // Find user by email
@@ -101,7 +101,7 @@ export default function TeamManagement() {
 
     const userToInviteDoc = querySnapshot.docs[0];
     const userToInvite = userToInviteDoc.data() as UserProfile;
-    
+
     const orgRef = doc(db, 'organizations', organizationId);
     const userRef = doc(db, 'users', userToInvite.uid);
 
@@ -110,7 +110,7 @@ export default function TeamManagement() {
       await updateDoc(orgRef, {
         members: arrayUnion(userToInvite.uid)
       });
-      
+
       // Update the user's organizationId
       await updateDoc(userRef, {
         organizationId: organizationId
@@ -130,7 +130,7 @@ export default function TeamManagement() {
 
   return (
     <div className="space-y-8">
-       {error && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+      {error && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
       {success && <Alert><AlertTitle>Success</AlertTitle><AlertDescription>{success}</AlertDescription></Alert>}
       <Card>
         <CardHeader>
@@ -147,22 +147,22 @@ export default function TeamManagement() {
       </Card>
 
       <Card>
-          <CardHeader>
-              <CardTitle>Invite New Member</CardTitle>
-              <CardDescription>Enter the email of the user you want to invite to your organization.</CardDescription>
-          </CardHeader>
-          <CardContent>
-              <form onSubmit={handleInviteMember} className="flex gap-2">
-                  <Input
-                      type="email"
-                      placeholder="user@example.com"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      required
-                  />
-                  <Button type="submit">Invite User</Button>
-              </form>
-          </CardContent>
+        <CardHeader>
+          <CardTitle>Invite New Member</CardTitle>
+          <CardDescription>Enter the email of the user you want to invite to your organization.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleInviteMember} className="flex gap-2">
+            <Input
+              type="email"
+              placeholder="user@example.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              required
+            />
+            <Button type="submit">Invite User</Button>
+          </form>
+        </CardContent>
       </Card>
 
       <Card>

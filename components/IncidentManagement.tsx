@@ -13,12 +13,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function IncidentManagement() {
   const { organizationId } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -36,6 +38,9 @@ export default function IncidentManagement() {
     // Fetch services for the multi-select from the nested collection
     const servicesUnsub = onSnapshot(collection(db, 'organizations', organizationId, 'services'), (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Service[]);
+    }, (err) => {
+      console.error("Error fetching services:", err);
+      setError("Failed to load services for selection.");
     });
 
     // Fetch incidents from the nested collection
@@ -43,6 +48,10 @@ export default function IncidentManagement() {
     const q = query(incidentsCollection, orderBy('createdAt', 'desc'));
     const incidentsUnsub = onSnapshot(q, (snapshot) => {
       setIncidents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Incident[]);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error fetching incidents:", err);
+      setError("Failed to load incidents.");
       setLoading(false);
     });
 
@@ -54,6 +63,7 @@ export default function IncidentManagement() {
 
   const handleCreateIncident = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!title.trim() || !message.trim() || !organizationId) return;
 
     const selectedServices = services.filter(s => affectedServices.includes(s.id)).map(s => ({ id: s.id, name: s.name }));
@@ -73,6 +83,7 @@ export default function IncidentManagement() {
       setAffectedServices([]); setIncidentStatus('Investigating');
     } catch (error) {
       console.error("Error creating incident:", error);
+      setError("Failed to create incident. Please try again.");
     }
   };
 
@@ -85,6 +96,12 @@ export default function IncidentManagement() {
 
   return (
     <div className="space-y-8">
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader><CardTitle>Create New Incident</CardTitle></CardHeader>
         <CardContent>

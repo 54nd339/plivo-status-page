@@ -47,6 +47,7 @@ export default function ServiceManagement() {
 
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!newServiceName.trim() || !organizationId) return;
     try {
       const servicesCollection = collection(db, 'organizations', organizationId, 'services');
@@ -65,7 +66,13 @@ export default function ServiceManagement() {
   };
 
   const handleDeleteService = async (serviceId: string) => {
-    if (!organizationId || !confirm("Are you sure?")) return;
+    setError(null);
+    if (!organizationId) return;
+
+    // Using a custom modal/dialog for confirmation is better than window.confirm
+    // but for simplicity, we'll keep it. In a real app, build a confirmation dialog component.
+    if (!confirm("Are you sure you want to delete this service?")) return;
+
     try {
       const serviceDoc = doc(db, 'organizations', organizationId, 'services', serviceId);
       await deleteDoc(serviceDoc);
@@ -87,11 +94,11 @@ export default function ServiceManagement() {
 
   if (loading) return <div>Loading services...</div>;
   if (!organizationId) return <div>Loading organization details...</div>;
-  if (error) return <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>;
 
   return (
     <>
       <div className="space-y-8">
+        {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
         <Card>
           <CardHeader><CardTitle>Add New Service</CardTitle></CardHeader>
           <CardContent>
@@ -140,7 +147,7 @@ export default function ServiceManagement() {
             </Card>
           ))}
         </div>
-        {services.length === 0 && <p>No services added yet.</p>}
+        {services.length === 0 && !loading && <p>No services added yet.</p>}
       </div>
 
       {editingService && (

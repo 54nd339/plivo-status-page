@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface EditServiceDialogProps {
   service: Service;
@@ -20,20 +21,22 @@ interface EditServiceDialogProps {
 export default function EditServiceDialog({ service, isOpen, onClose }: EditServiceDialogProps) {
   const [name, setName] = useState('');
   const [status, setStatus] = useState('Operational');
+  const [error, setError] = useState<string | null>(null);
   const { organizationId } = useAuth();
 
   useEffect(() => {
     if (service) {
       setName(service.name);
       setStatus(service.status);
+      setError(null);
     }
   }, [service]);
 
   const handleUpdate = async () => {
+    setError(null);
     // Ensure we have the necessary data before proceeding
     if (!service || !organizationId) {
-      console.error("Service or Organization ID is missing.");
-      // Optionally, we can show an error message to the user
+      setError("Service or Organization ID is missing.");
       return;
     }
 
@@ -48,7 +51,7 @@ export default function EditServiceDialog({ service, isOpen, onClose }: EditServ
       onClose();
     } catch (error) {
       console.error("Error updating service: ", error);
-      // Optionally, we can show an error message to the user
+      setError("Failed to update service. Please try again.");
     }
   };
 
@@ -60,6 +63,12 @@ export default function EditServiceDialog({ service, isOpen, onClose }: EditServ
         <DialogHeader>
           <DialogTitle>Edit Service</DialogTitle>
         </DialogHeader>
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right">
