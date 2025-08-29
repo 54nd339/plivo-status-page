@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Organization, UserProfile } from '@/types';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function TeamManagement() {
   const { organizationId, userProfile } = useAuth();
@@ -16,6 +17,9 @@ export default function TeamManagement() {
   const [members, setMembers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!organizationId) {
@@ -33,10 +37,8 @@ export default function TeamManagement() {
         const memberProfiles: UserProfile[] = [];
         for (const memberId of orgData.members) {
           const userRef = doc(db, 'users', memberId);
-          const userSnap = await onSnapshot(userRef, (userDoc) => {
+          onSnapshot(userRef, (userDoc) => {
             if (userDoc.exists()) {
-                // This is a bit inefficient for large teams, but fine for this scope.
-                // A better approach for production would be a separate members sub-collection.
                 const profile = userDoc.data() as UserProfile;
                 const existingMemberIndex = memberProfiles.findIndex(m => m.uid === profile.uid);
                 if (existingMemberIndex > -1) {
@@ -70,11 +72,66 @@ export default function TeamManagement() {
     });
   };
 
+  const handleInviteMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!inviteEmail || !organizationId || !organization) {
+      setError("Please enter a valid email.");
+      return;
+    }
+
+    // Check if user is already a member
+    const isAlreadyMember = members.some(member => member.email === inviteEmail);
+    if (isAlreadyMember) {
+        setError("User is already a member of this organization.");
+        return;
+    }
+
+    // Find user by email
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where("email", "==", inviteEmail));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      setError("User with this email does not exist.");
+      return;
+    }
+
+    const userToInviteDoc = querySnapshot.docs[0];
+    const userToInvite = userToInviteDoc.data() as UserProfile;
+    
+    const orgRef = doc(db, 'organizations', organizationId);
+    const userRef = doc(db, 'users', userToInvite.uid);
+
+    try {
+      // Add user to the organization's members array
+      await updateDoc(orgRef, {
+        members: arrayUnion(userToInvite.uid)
+      });
+      
+      // Update the user's organizationId
+      await updateDoc(userRef, {
+        organizationId: organizationId
+      });
+
+      setSuccess(`${userToInvite.displayName} has been added to the team.`);
+      setInviteEmail('');
+    } catch (err) {
+      setError("Failed to add user to the team.");
+      console.error(err);
+    }
+  };
+
+
   if (loading) return <div>Loading team settings...</div>;
   if (!organization) return <div>Could not load organization details.</div>;
 
   return (
     <div className="space-y-8">
+       {error && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+      {success && <Alert><AlertTitle>Success</AlertTitle><AlertDescription>{success}</AlertDescription></Alert>}
       <Card>
         <CardHeader>
           <CardTitle>Public Status Page URL</CardTitle>
@@ -87,6 +144,25 @@ export default function TeamManagement() {
             {copied ? 'Copied!' : 'Copy'}
           </Button>
         </CardContent>
+      </Card>
+
+      <Card>
+          <CardHeader>
+              <CardTitle>Invite New Member</CardTitle>
+              <CardDescription>Enter the email of the user you want to invite to your organization.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <form onSubmit={handleInviteMember} className="flex gap-2">
+                  <Input
+                      type="email"
+                      placeholder="user@example.com"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      required
+                  />
+                  <Button type="submit">Invite User</Button>
+              </form>
+          </CardContent>
       </Card>
 
       <Card>
@@ -110,7 +186,6 @@ export default function TeamManagement() {
               </div>
             ))}
           </div>
-          {/* Invitation UI would go here in a future step */}
         </CardContent>
       </Card>
     </div>

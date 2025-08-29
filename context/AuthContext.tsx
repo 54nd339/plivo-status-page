@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { AuthContextType, UserProfile } from '@/types';
 
@@ -22,6 +22,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        // setup a listener for user profile changes
+        const userRef = doc(db, 'users', currentUser.uid);
+        onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            const profile = doc.data() as UserProfile;
+            setUserProfile(profile);
+            setOrganizationId(profile.organizationId);
+          }
+          setLoading(false);
+        });
+
         await handleUserLogin(currentUser);
       } else {
         setUserProfile(null);
